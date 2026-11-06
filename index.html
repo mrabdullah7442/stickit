@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Stickit, a task timer that rings your phone</title>
+  <meta name="description" content="Twist the dial to say when, stick the task on your day, and your phone rings when it is time.">
+  <meta name="theme-color" content="#1f1c18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Stickit">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Sofia+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="container bar__inner">
+      <a class="wordmark" href="./">Stickit</a>
+      <p class="bar__total">Today <strong class="num" id="today-total">0:00:00</strong></p>
+      <button class="chip chip--bar" type="button" id="sound-toggle" aria-pressed="true">Sound on</button>
+    </div>
+  </header>
+
+  <main class="container app">
+    <h1 class="visually-hidden">Stickit</h1>
+
+    <section class="dialzone" aria-labelledby="dial-title">
+      <h2 id="dial-title" class="visually-hidden">Your next twelve hours</h2>
+
+      <div class="dial" id="dial" data-mode="idle">
+        <svg class="dial__svg" id="dial-svg" viewBox="0 0 400 400" aria-hidden="true">
+          <circle class="dial__face" cx="200" cy="200" r="186"></circle>
+          <circle class="dial__track" cx="200" cy="200" r="150"></circle>
+          <path class="dial__sweep" id="dial-sweep" d=""></path>
+          <g id="dial-ticks"></g>
+          <g id="dial-pins"></g>
+          <line class="dial__now" x1="200" y1="14" x2="200" y2="58"></line>
+          <g id="dial-handle" class="dial__handle" hidden>
+            <line id="dial-arm" x1="200" y1="200" x2="200" y2="50"></line>
+            <circle id="dial-knob" cx="200" cy="50" r="22"></circle>
+          </g>
+        </svg>
+
+        <div class="dial__center" aria-live="polite">
+          <div class="dial__view dial__view--idle">
+            <p class="dial__small" id="next-label">Nothing on the clock</p>
+            <p class="dial__big num" id="next-big">Free</p>
+            <p class="dial__small" id="next-sub">Type a task, then twist the dial</p>
+          </div>
+          <div class="dial__view dial__view--live">
+            <p class="dial__small" id="run-label">Now timing</p>
+            <p class="dial__big num" id="run-clock">0:00</p>
+            <p class="dial__name" id="run-name"></p>
+          </div>
+          <div class="dial__view dial__view--set">
+            <p class="dial__small">Ring me in</p>
+            <p class="dial__big num" id="set-big">0 min</p>
+            <p class="dial__small" id="set-at">at 0:00</p>
+          </div>
+        </div>
+
+        <div class="dial__hit" id="dial-hit" role="slider" tabindex="-1" aria-label="Reminder time, minutes from now" aria-valuemin="0" aria-valuemax="720" aria-valuenow="0" aria-valuetext="No reminder"></div>
+      </div>
+
+      <div class="runbar" id="runbar" hidden>
+        <button class="btn btn--primary" type="button" id="run-pause">Pause</button>
+        <button class="btn" type="button" id="run-done">Done</button>
+      </div>
+
+      <form class="add" id="add-form" autocomplete="off">
+        <label class="visually-hidden" for="add-name">New task</label>
+        <div class="add__line">
+          <input class="input" id="add-name" name="name" type="text" required maxlength="80" placeholder="What needs doing?" enterkeyhint="done">
+          <button class="btn btn--primary" type="submit" id="add-submit">Stick it</button>
+        </div>
+        <div class="add__when" id="add-when" hidden>
+          <p class="add__help" id="add-help">Twist the dial to set a ring, or pick one:</p>
+          <div class="add__quick" role="group" aria-label="Quick reminder times">
+            <button class="chip" type="button" data-quick="15">15 min</button>
+            <button class="chip" type="button" data-quick="30">30 min</button>
+            <button class="chip" type="button" data-quick="60">1 hour</button>
+            <button class="chip" type="button" data-quick="0">No ring</button>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="add-start">
+            <span>Start the clock now</span>
+          </label>
+        </div>
+      </form>
+    </section>
+
+    <section class="sheet" aria-labelledby="sheet-title">
+      <div class="sheet__head">
+        <h2 id="sheet-title">Today’s sheet</h2>
+        <p class="sheet__count" id="sheet-count">0 to do</p>
+      </div>
+
+      <div class="sheet__empty" id="sheet-empty">
+        <p class="sheet__empty-title">The sheet is blank.</p>
+        <p>Type a task above, twist the dial to when it should ring, and stick it.</p>
+      </div>
+
+      <noscript>
+        <p class="sheet__empty">Stickit keeps its tasks and timers on this device with JavaScript. Turn it on to start sticking.</p>
+      </noscript>
+
+      <p class="notice" id="storage-error" hidden>This browser blocked storage, so tasks vanish when the tab closes.</p>
+
+      <ol class="stickers" id="list"></ol>
+
+      <div class="done" id="done-wrap" hidden>
+        <div class="done__head">
+          <h2>Peeled off</h2>
+          <button class="link-btn" type="button" id="clear-done">Clear the pile</button>
+        </div>
+        <ol class="done__list" id="done-list"></ol>
+      </div>
+
+      <details class="phone" id="phone">
+        <summary class="phone__summary">
+          <span class="phone__title">Ring my phone</span>
+          <span class="phone__state" id="phone-state">Off</span>
+        </summary>
+        <div class="phone__body">
+          <p>Stickit can ring your phone at task time, even with this page closed. It uses ntfy, a free push app, through a private channel only you know.</p>
+          <ol class="phone__steps">
+            <li>Install <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">ntfy from the App Store</a> and allow its notifications.</li>
+            <li>In ntfy, tap + and subscribe to this channel on ntfy.sh:
+              <span class="phone__topic">
+                <code class="num" id="phone-topic"></code>
+                <button class="chip" type="button" id="phone-copy">Copy</button>
+              </span>
+            </li>
+            <li>Send a test ring to check it arrives.</li>
+          </ol>
+          <div class="phone__actions">
+            <button class="btn btn--primary" type="button" id="phone-test">Send a test ring</button>
+            <label class="check">
+              <input type="checkbox" id="phone-on">
+              <span>Ring my phone for reminders</span>
+            </label>
+          </div>
+          <p class="phone__note">Task names travel through ntfy.sh to reach your phone. Rings can be set up to three days ahead; anything later is booked when you next open Stickit. Making a new channel stops rings on the old one.</p>
+          <button class="link-btn" type="button" id="phone-new">Make a new channel</button>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+
+  <template id="sticker-tpl">
+    <li class="sticker diecut">
+      <div class="sticker__top">
+        <p class="sticker__name"></p>
+        <span class="tag" hidden></span>
+      </div>
+      <div class="sticker__bottom">
+        <p class="sticker__time num"></p>
+        <div class="sticker__actions">
+          <button class="btn btn--small btn--primary" type="button" data-act="toggle">Start</button>
+          <button class="btn btn--small" type="button" data-act="done">Done</button>
+          <button class="icon-btn" type="button" data-act="remove">Remove</button>
+        </div>
+      </div>
+    </li>
+  </template>
+</body>
+</html>
